@@ -1,5 +1,6 @@
 nationality,country
-modern, Unknown
+modern, modern
+"", unknown
 Italia, Italy
 Nederland, Netherlands
 "France métropolitaine, France", France
@@ -82,7 +83,3 @@ mexican, Mexico
 "bavaria,", Germany
 sri, Srilanka
 Ελλάδα, Greece
-
-
-
-
