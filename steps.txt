@@ -1,3 +1,0 @@
-csvgrep -c artwork_type -m painting omniart_v3_datadump.csv | 
-    csvcut -c artwork_name,artist_full_name,creation_year,century,school,color_pallete,dominant_color,palette_count 
-    > omniart-paintings-filtered.csv
