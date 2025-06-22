@@ -1,6 +1,8 @@
 import colorsys
 import numpy as np
+import pandas as pd
 import ast
+import re
 
 
 #################################################################################################
@@ -41,17 +43,28 @@ def extract_hsb_components_from_vec(colors, top_n=10):
 # ITEMSET MINING
 #################################################################################################
 
-def prepare_multidupehack_input(df, color_clusters, output_file='mining.txt'):
+def prepare_multidupehack_input(df, color_clusters, target_dim, output_file='mining.txt'):
     all_colors = set(color_clusters['HEX'].str.upper())
     
     with open(output_file, 'w') as f:
         for _, row in df.iterrows():
-            dimensions = ":".join([
-                str(row['decade']).strip(),
-                str(row['century']).strip(),
-                str(row['school']).replace(' ', '_').strip(),
-                str(row['artist_full_name']).replace(' ', '_').strip()
-            ])
+            dimensions = f"{str(row[target_dim]).replace(' ', '_').strip()}"
+            
+            # Color dimension #HEX
+            colors = ast.literal_eval(row['cluster_hex'])
+            color_pairs = []
+            for color in colors:
+                hex_code = color.upper()
+                if hex_code in all_colors: color_pairs.append(f"{hex_code}")
+                    
+            f.write(f"{dimensions}:{','.join(color_pairs)}:1.0\n")
+
+def prepare_multidupehack_input_fuzzy(df, color_clusters, target_dim, output_file="fuzzy_mining.txt"):
+    all_colors = set(color_clusters['HEX'].str.upper())
+    
+    with open(output_file, 'w') as f:
+        for _, row in df.iterrows():
+            dimensions = f"{str(row[target_dim]).replace(' ', '_').strip()}"
             
             # Color dimension #HEX#COUNT
             colors = ast.literal_eval(row['cluster_hex'])
@@ -62,6 +75,39 @@ def prepare_multidupehack_input(df, color_clusters, output_file='mining.txt'):
                 if hex_code in all_colors: color_pairs.append(f"{hex_code}#{count}")
                     
             f.write(f"{dimensions}:{','.join(color_pairs)}:1.0\n")
+
+def parse_patterns(file_path="decade_patterns.txt", target_dim_name="decades"):
+    data = []
+    with open(file_path) as f:
+        for line in f:
+            # Split pattern from stats
+            pattern_part, stats_part = line.strip().split(' => ')
+            
+            # Split target dimension values and colors
+            if '#' in pattern_part:
+                dim_part, colors_part = pattern_part.split(' #', 1)
+                colors = ['#' + c for c in colors_part.split(',#')]
+            else:
+                dim_part = pattern_part
+                colors = []
+            
+            # Handle different delimiters (comma or colon)
+            dim_values = re.split(r'[,:]', dim_part)
+            dim_values = [v.strip() for v in dim_values if v.strip()]
+            
+            # Parse statistics
+            sizes, support = stats_part.split(' : ')
+            n_dim, n_colors = map(int, sizes.split(', '))
+            
+            data.append({
+                target_dim_name: dim_values,
+                'colors': colors,
+                f'n_{target_dim_name}': n_dim,
+                'n_colors': n_colors,
+                'support': int(support)
+            })
+    
+    return pd.DataFrame(data)
 
 #################################################################################################
 # CLASSIFIER
