@@ -1,6 +1,6 @@
 import colorsys
 import numpy as np
-import pandas as pd
+import ast
 
 
 #################################################################################################
@@ -41,24 +41,27 @@ def extract_hsb_components_from_vec(colors, top_n=10):
 # ITEMSET MINING
 #################################################################################################
 
-def generate_multidupehack_file(file_name, colors_df, df, target):
-    all_colors = sorted(colors_df["HEX"].unique())
-    all_targets = sorted(df[target].unique())
-    columns = list(all_colors) + list(map(str, all_targets))
-    result_df = pd.DataFrame(columns=columns)
+def prepare_multidupehack_input(df, color_clusters, output_file='mining.txt'):
+    all_colors = set(color_clusters['HEX'].str.upper())
     
-    for idx, row in df.iterrows():
-        for color in row["cluster_hex"]:
-            if color in result_df.columns: result_df.at[idx, color] = 1
-        target_col = str(row[target])
-        if target_col in result_df.columns: result_df.at[idx, target_col] = 1
-
-    with open(file_name, "w") as f:
-        for _, row in result_df.iterrows():
-            color_part = ",".join(str(row[col]) for col in all_colors)
-            targets_part = ",".join(str(row[col]) for col in all_targets)
-            f.write(f"{color_part} {targets_part} 1\n")
-
+    with open(output_file, 'w') as f:
+        for _, row in df.iterrows():
+            dimensions = ":".join([
+                str(row['decade']).strip(),
+                str(row['century']).strip(),
+                str(row['school']).replace(' ', '_').strip(),
+                str(row['artist_full_name']).replace(' ', '_').strip()
+            ])
+            
+            # Color dimension #HEX#COUNT
+            colors = ast.literal_eval(row['cluster_hex'])
+            counts = ast.literal_eval(row['palette_count'])  
+            color_pairs = []
+            for color, count in zip(colors, counts):
+                hex_code = color.upper()
+                if hex_code in all_colors: color_pairs.append(f"{hex_code}#{count}")
+                    
+            f.write(f"{dimensions}:{','.join(color_pairs)}:1.0\n")
 
 #################################################################################################
 # CLASSIFIER
