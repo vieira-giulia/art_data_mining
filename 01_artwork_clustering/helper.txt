@@ -1,0 +1,63 @@
+"# --- Visualization ---\n",
+    "\n",
+    "fig, axs = plt.subplots(N_ARTWORK_CLUSTERS, 1, figsize=(10, N_ARTWORK_CLUSTERS * 1.5))\n",
+    "fig.suptitle('Representative Color Palettes for Each Artwork Cluster', fontsize=16)\n",
+    "\n",
+    "for i, center in enumerate(cluster_centers_unscaled):\n",
+    "    palette_matrix = center.reshape(MAX_COLORS, FEATURES_PER_COLOR)\n",
+    "    sorted_palette = sorted(palette_matrix, key=lambda x: x[4], reverse=True)\n",
+    "    rgb_palette = [get_rgb_from_hsv_sin_cos(c[0], c[1], c[2], c[3]) for c in sorted_palette]\n",
+    "    \n",
+    "    axs[i].imshow([rgb_palette])\n",
+    "    # Use the simple name for the title\n",
+    "    axs[i].set_title(cluster_name_map[i])\n",
+    "    axs[i].set_xticks([])\n",
+    "    axs[i].set_yticks([])\n",
+    "\n",
+    "plt.tight_layout(rect=[0, 0, 1, 0.96])\n",
+    "plt.show()\n",
+    "\n",
+    "school_distribution = artworks_df.groupby('cluster_name')['school'].value_counts(normalize=True).unstack().fillna(0)\n",
+    "\n",
+    "plt.figure(figsize=(14, 8))\n",
+    "sns.heatmap(school_distribution, annot=True, cmap='viridis', fmt='.1%')\n",
+    "plt.title('Distribution of Art Schools Across Final Artwork Clusters')\n",
+    "plt.xlabel('Art School')\n",
+    "plt.ylabel('Artwork Cluster')\n",
+    "plt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Conclusion\n",
+    "\n",
+    "This notebook successfully implements a direct vectorization approach to artwork clustering. By representing each artwork as a single, comprehensive 50-dimensional vector, we allow the K-Means algorithm to consider the full complexity of each color palette, including the HSV values and weight of every color, in a single step.\n",
+    "\n",
+    "The analysis reveals distinct artwork clusters, each defined by a unique average color palette. By programmatically naming these clusters and exporting their raw 50-dimensional feature vectors, we have created an interpretable and actionable summary of the stylistic groups within the dataset. Visualizing these named palettes and the distribution of art schools within them provides a powerful and intuitive way to understand stylistic similarities and differences."
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.9.7"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}
