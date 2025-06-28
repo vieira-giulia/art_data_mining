@@ -3,6 +3,9 @@ import numpy as np
 import pandas as pd
 import ast
 import re
+from itertools import combinations
+from collections import defaultdict
+from functools import lru_cache
 
 
 #################################################################################################
@@ -40,76 +43,6 @@ def extract_hsb_components_from_vec(colors, top_n=10):
     return h, s, b
 
 #################################################################################################
-# ITEMSET MINING
-#################################################################################################
-
-def prepare_multidupehack_input(df, color_clusters, target_dim, output_file='mining.txt'):
-    all_colors = set(color_clusters['HEX'].str.upper())
-    
-    with open(output_file, 'w') as f:
-        for _, row in df.iterrows():
-            dimensions = f"{str(row[target_dim]).replace(' ', '_').strip()}"
-            
-            # Color dimension #HEX
-            colors = ast.literal_eval(row['cluster_hex'])
-            color_pairs = []
-            for color in colors:
-                hex_code = color.upper()
-                if hex_code in all_colors: color_pairs.append(f"{hex_code}")
-                    
-            f.write(f"{dimensions}:{','.join(color_pairs)}:1.0\n")
-
-def prepare_multidupehack_input_fuzzy(df, color_clusters, target_dim, output_file="fuzzy_mining.txt"):
-    all_colors = set(color_clusters['HEX'].str.upper())
-    
-    with open(output_file, 'w') as f:
-        for _, row in df.iterrows():
-            dimensions = f"{str(row[target_dim]).replace(' ', '_').strip()}"
-            
-            # Color dimension #HEX#COUNT
-            colors = ast.literal_eval(row['cluster_hex'])
-            counts = ast.literal_eval(row['palette_count'])  
-            color_pairs = []
-            for color, count in zip(colors, counts):
-                hex_code = color.upper()
-                if hex_code in all_colors: color_pairs.append(f"{hex_code}#{count}")
-                    
-            f.write(f"{dimensions}:{','.join(color_pairs)}:1.0\n")
-
-def parse_patterns(file_path="decade_patterns.txt", target_dim_name="decades"):
-    data = []
-    with open(file_path) as f:
-        for line in f:
-            # Split pattern from stats
-            pattern_part, stats_part = line.strip().split(' => ')
-            
-            # Split target dimension values and colors
-            if '#' in pattern_part:
-                dim_part, colors_part = pattern_part.split(' #', 1)
-                colors = ['#' + c for c in colors_part.split(',#')]
-            else:
-                dim_part = pattern_part
-                colors = []
-            
-            # Handle different delimiters (comma or colon)
-            dim_values = re.split(r'[,:]', dim_part)
-            dim_values = [v.strip() for v in dim_values if v.strip()]
-            
-            # Parse statistics
-            sizes, support = stats_part.split(' : ')
-            n_dim, n_colors = map(int, sizes.split(', '))
-            
-            data.append({
-                target_dim_name: dim_values,
-                'colors': colors,
-                f'n_{target_dim_name}': n_dim,
-                'n_colors': n_colors,
-                'support': int(support)
-            })
-    
-    return pd.DataFrame(data)
-
-#################################################################################################
 # CLASSIFIER
 #################################################################################################
 
@@ -118,3 +51,11 @@ def artwork_to_vector(row, n_colors, color_to_index):
     for color, weight in zip(row["cluster_hex"], row["palette_count"]):
         if color in color_to_index: vec[color_to_index[color]] += weight
     return vec
+
+def fuzzy_artwork_to_vector(row, n_colors, color_to_index):
+    vector = np.zeros(n_colors)
+    if isinstance(row["palette_count"], dict):
+        total_pixels = sum(row["palette_count"].values())
+        for color, count in row["palette_count"].items():
+            if color in color_to_index: vector[color_to_index[color]] = count / total_pixels
+    return vector
